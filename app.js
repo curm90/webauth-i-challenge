@@ -3,6 +3,7 @@ const helmet = require('helmet');
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
 const Users = require('./src/users/user-model');
+const restricted = require('./src/middleware');
 
 const app = express();
 
@@ -18,7 +19,7 @@ app.use(
     },
     httpOnly: true,
     resave: false,
-    saveOnInitialized: false
+    saveUninitialized: false
   })
 );
 
@@ -58,36 +59,28 @@ app.post('/api/login', (req, res) => {
     });
 });
 
-// function restricted(req, res, next) {
-//   const { username, password } = req.body;
-//   Users.findBy({ username })
-//     .first()
-//     .then(user => {
-//       if (user && bcrypt.compareSync(password, user.password)) {
-//         next();
-//       } else {
-//         res.status(401).json({ messasge: 'Invalid credentials' });
-//       }
-//     })
-//     .catch(error => {
-//       res.status(500).json({ message: error.message });
-//     });
-// }
-
-function restricted(req, res, next) {
-  if (req.session && req.session.user) {
-    next();
-  } else {
-    res.status(401).json({ message: 'You shall not pass' });
-  }
-}
-
 app.get('/api/users', restricted, (req, res) => {
   Users.find()
     .then(users => {
       res.json(users);
     })
     .catch(error => res.send(error));
+});
+
+app.get('/api/logout', (req, res) => {
+  if (req.session) {
+    req.session.destroy(error => {
+      if (error) {
+        res.json({
+          message: 'You can checkout any time you like, but you can never leave'
+        });
+      } else {
+        res.status(200).json({ message: 'Bye, thanks for playing' });
+      }
+    });
+  } else {
+    res.status(200).json({ message: 'You were never here to begin with' });
+  }
 });
 
 module.exports = app;
